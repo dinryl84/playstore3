@@ -106,7 +106,7 @@ fun DashboardScreen(
             ManagementButton(
                 title = "Subject Management",
                 description = "Add, edit, and manage subjects",
-                onClick = { /* TODO: Navigate to subject management */ }
+                onClick = { navController.navigate("subject_management") }
             )
 
             ManagementButton(

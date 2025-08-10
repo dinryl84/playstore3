@@ -6,6 +6,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.gradingapp.ui.screens.DashboardScreen
 import com.example.gradingapp.ui.screens.SectionManagementScreen
+import com.example.gradingapp.ui.screens.SubjectManagementScreen
 
 @Composable
 fun NavGraph() {
@@ -23,8 +24,11 @@ fun NavGraph() {
             SectionManagementScreen(navController = navController)
         }
 
+        composable("subject_management") {
+            SubjectManagementScreen(navController = navController)
+        }
+
         // TODO: Add other screen destinations
-        // composable("subject_management") { SubjectManagementScreen(navController) }
         // composable("student_management") { StudentManagementScreen(navController) }
         // composable("score_input") { ScoreInputScreen(navController) }
     }
