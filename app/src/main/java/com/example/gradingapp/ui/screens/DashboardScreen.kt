@@ -112,7 +112,7 @@ fun DashboardScreen(
             ManagementButton(
                 title = "Student Management",
                 description = "Add, edit, and manage students",
-                onClick = { /* TODO: Navigate to student management */ }
+                onClick = { navController.navigate("student_management") }
             )
 
             ManagementButton(
