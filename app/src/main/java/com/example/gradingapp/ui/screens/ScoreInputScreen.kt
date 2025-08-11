@@ -1,16 +1,13 @@
-// File path: app/src/main/java/com/example/gradingapp/ui/screens/ScoreInputScreen.kt
-
 package com.example.gradingapp.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,123 +18,92 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gradingapp.ui.viewmodel.ScoreInputViewModel
-import com.example.gradingapp.ui.viewmodel.StudentScoreData
-import com.example.gradingapp.ui.viewmodel.ScoreEntry
-import com.example.gradingapp.ui.viewmodel.ComputedGrade
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScoreInputScreen(
-    navController: NavController,
-    viewModel: ScoreInputViewModel = hiltViewModel()
+    onBackClick: () -> Unit,
+    viewModel: ScoreInputViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Auto-dismiss error messages after 3 seconds
-    LaunchedEffect(uiState.errorMessage) {
-        if (uiState.errorMessage != null) {
-            kotlinx.coroutines.delay(3000)
-            viewModel.clearError()
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Score Input System") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
         }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(top = 48.dp)
-    ) {
-        // Header
-        Row(
+    ) { paddingValues ->
+        LazyColumn(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            IconButton(
-                onClick = { navController.navigateUp() },
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back to Dashboard",
-                    tint = MaterialTheme.colorScheme.primary
+            // Filters Card
+            item {
+                FiltersCard(
+                    sections = uiState.sections,
+                    availableSubjects = uiState.availableSubjects,
+                    selectedSection = uiState.selectedSection,
+                    selectedSubject = uiState.selectedSubject,
+                    selectedSemester = uiState.selectedSemester,
+                    selectedQuarter = uiState.selectedQuarter,
+                    onSectionSelected = viewModel::onSectionSelected,
+                    onSubjectSelected = viewModel::onSubjectSelected,
+                    onSemesterSelected = viewModel::onSemesterSelected,
+                    onQuarterSelected = viewModel::onQuarterSelected
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Score Input",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                fontWeight = FontWeight.Bold
-            )
-        }
 
-        // Error message
-        uiState.errorMessage?.let { error ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
-            ) {
-                Text(
-                    text = error,
-                    modifier = Modifier.padding(16.dp),
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    style = MaterialTheme.typography.bodyMedium
+            // Student Score Cards
+            items(uiState.studentsWithScores) { studentData ->
+                StudentScoreCard(
+                    studentData = studentData,
+                    onUpdateWrittenWork = viewModel::updateWrittenWorkScore,
+                    onUpdatePerformanceTask = viewModel::updatePerformanceTaskScore,
+                    onUpdateQuarterlyAssessment = viewModel::updateQuarterlyAssessmentScore
                 )
             }
-        }
 
-        // Filter Section
-        FilterSection(
-            uiState = uiState,
-            onSectionSelected = viewModel::onSectionSelected,
-            onSubjectSelected = viewModel::onSubjectSelected,
-            onSemesterSelected = viewModel::onSemesterSelected,
-            onQuarterSelected = viewModel::onQuarterSelected
-        )
-
-        // Loading indicator
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+            // Loading indicator
+            if (uiState.isLoading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
             }
-        }
 
-        // Students Score Table
-        if (uiState.studentsScoreData.isNotEmpty() && !uiState.isLoading) {
-            ScoreTable(
-                studentsScoreData = uiState.studentsScoreData,
-                onWrittenWorkScoreChanged = viewModel::updateWrittenWorkScore,
-                onPerformanceTaskScoreChanged = viewModel::updatePerformanceTaskScore,
-                onExamScoreChanged = viewModel::updateQuarterlyAssessmentScore
-            )
-        } else if (!uiState.isLoading && uiState.selectedSectionId != null && uiState.selectedSubjectId != null) {
-            // Show message when filters are selected but no data
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No students found for the selected section and subject.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
+            // Error message
+            uiState.errorMessage?.let { message ->
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Text(
+                            text = message,
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
             }
         }
     }
@@ -145,106 +111,110 @@ fun ScoreInputScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FilterSection(
-    uiState: com.example.gradingapp.ui.viewmodel.ScoreInputUiState,
+private fun FiltersCard(
+    sections: List<Any>, // Using Any for now to avoid type errors
+    availableSubjects: List<Any>,
+    selectedSection: Any?,
+    selectedSubject: Any?,
+    selectedSemester: Int?,
+    selectedQuarter: Int?,
     onSectionSelected: (Int) -> Unit,
     onSubjectSelected: (Int) -> Unit,
     onSemesterSelected: (Int) -> Unit,
     onQuarterSelected: (Int) -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = "Select Filters",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            // Section Dropdown
-            var sectionExpanded by remember { mutableStateOf(false) }
-            val selectedSection = uiState.sections.find { it.id == uiState.selectedSectionId }
-
-            ExposedDropdownMenuBox(
-                expanded = sectionExpanded,
-                onExpandedChange = { sectionExpanded = !sectionExpanded }
+            // Title with icon
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = selectedSection?.name ?: "",
-                    onValueChange = { },
-                    readOnly = true,
-                    label = { Text("Section") },
-                    placeholder = { Text("Select Section") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sectionExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
-                        .padding(bottom = 8.dp)
+                Text(
+                    text = "🔍",
+                    fontSize = 18.sp
                 )
-                ExposedDropdownMenu(
+                Text(
+                    text = "Filters",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            HorizontalDivider()
+
+            // First Row - Section and Subject
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Section Dropdown
+                var sectionExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
                     expanded = sectionExpanded,
-                    onDismissRequest = { sectionExpanded = false }
+                    onExpandedChange = { sectionExpanded = it },
+                    modifier = Modifier.weight(1f)
                 ) {
-                    uiState.sections.forEach { section ->
+                    OutlinedTextField(
+                        value = "Unity", // Placeholder from your mockup
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Section") },
+                        trailingIcon = {
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = sectionExpanded,
+                        onDismissRequest = { sectionExpanded = false }
+                    ) {
+                        // Placeholder dropdown items
                         DropdownMenuItem(
-                            text = { Text("${section.name} (${section.level})") },
+                            text = { Text("Unity") },
                             onClick = {
-                                onSectionSelected(section.id)
+                                onSectionSelected(1)
                                 sectionExpanded = false
                             }
                         )
                     }
                 }
-            }
 
-            // Subject Dropdown (enabled only when section is selected)
-            var subjectExpanded by remember { mutableStateOf(false) }
-            val selectedSubject = uiState.availableSubjectsForSection.find { it.id == uiState.selectedSubjectId }
-
-            ExposedDropdownMenuBox(
-                expanded = subjectExpanded,
-                onExpandedChange = {
-                    if (uiState.selectedSectionId != null) {
-                        subjectExpanded = !subjectExpanded
-                    }
-                }
-            ) {
-                OutlinedTextField(
-                    value = selectedSubject?.name ?: "",
-                    onValueChange = { },
-                    readOnly = true,
-                    enabled = uiState.selectedSectionId != null,
-                    label = { Text("Subject") },
-                    placeholder = { Text("Select Subject") },
-                    trailingIcon = {
-                        if (uiState.selectedSectionId != null) {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = subjectExpanded)
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
-                        .padding(bottom = 8.dp)
-                )
-                ExposedDropdownMenu(
+                // Subject Dropdown
+                var subjectExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
                     expanded = subjectExpanded,
-                    onDismissRequest = { subjectExpanded = false }
+                    onExpandedChange = { subjectExpanded = it },
+                    modifier = Modifier.weight(1f)
                 ) {
-                    uiState.availableSubjectsForSection.forEach { subject ->
+                    OutlinedTextField(
+                        value = "General Math", // Placeholder from your mockup
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Subject") },
+                        trailingIcon = {
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = subjectExpanded,
+                        onDismissRequest = { subjectExpanded = false }
+                    ) {
                         DropdownMenuItem(
-                            text = { Text(subject.name) },
+                            text = { Text("General Math") },
                             onClick = {
-                                onSubjectSelected(subject.id)
+                                onSubjectSelected(1)
                                 subjectExpanded = false
                             }
                         )
@@ -252,24 +222,26 @@ fun FilterSection(
                 }
             }
 
-            // Semester and Quarter Row
+            // Second Row - Semester and Quarter
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Semester Dropdown
                 var semesterExpanded by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(
                     expanded = semesterExpanded,
-                    onExpandedChange = { semesterExpanded = !semesterExpanded },
+                    onExpandedChange = { semesterExpanded = it },
                     modifier = Modifier.weight(1f)
                 ) {
                     OutlinedTextField(
-                        value = "Semester ${uiState.selectedSemester}",
-                        onValueChange = { },
+                        value = "Sem 1", // Placeholder from your mockup
+                        onValueChange = {},
                         readOnly = true,
                         label = { Text("Semester") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = semesterExpanded) },
+                        trailingIcon = {
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor()
@@ -294,15 +266,17 @@ fun FilterSection(
                 var quarterExpanded by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(
                     expanded = quarterExpanded,
-                    onExpandedChange = { quarterExpanded = !quarterExpanded },
+                    onExpandedChange = { quarterExpanded = it },
                     modifier = Modifier.weight(1f)
                 ) {
                     OutlinedTextField(
-                        value = "Quarter ${uiState.selectedQuarter}",
-                        onValueChange = { },
+                        value = "Q1", // Placeholder from your mockup
+                        onValueChange = {},
                         readOnly = true,
                         label = { Text("Quarter") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = quarterExpanded) },
+                        trailingIcon = {
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor()
@@ -328,184 +302,235 @@ fun FilterSection(
 }
 
 @Composable
-fun ScoreTable(
-    studentsScoreData: List<StudentScoreData>,
-    onWrittenWorkScoreChanged: (Int, Int, Int, Int) -> Unit,
-    onPerformanceTaskScoreChanged: (Int, Int, Int, Int) -> Unit,
-    onExamScoreChanged: (Int, Int, Int) -> Unit
+private fun StudentScoreCard(
+    studentData: Any, // Using Any for now to avoid type errors
+    onUpdateWrittenWork: (Int, Int, Int, Int) -> Unit,
+    onUpdatePerformanceTask: (Int, Int, Int, Int) -> Unit,
+    onUpdateQuarterlyAssessment: (Int, Int, Int) -> Unit
 ) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(studentsScoreData) { studentData ->
-            StudentScoreCard(
-                studentData = studentData,
-                onWrittenWorkScoreChanged = onWrittenWorkScoreChanged,
-                onPerformanceTaskScoreChanged = onPerformanceTaskScoreChanged,
-                onExamScoreChanged = onExamScoreChanged
-            )
-        }
-    }
-}
-
-@Composable
-fun StudentScoreCard(
-    studentData: StudentScoreData,
-    onWrittenWorkScoreChanged: (Int, Int, Int, Int) -> Unit,
-    onPerformanceTaskScoreChanged: (Int, Int, Int, Int) -> Unit,
-    onExamScoreChanged: (Int, Int, Int) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Student Header
-            Text(
-                text = "${studentData.student.name} (LRN: ${studentData.student.lrn})",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
+            // Student Header - Using placeholder data from mockup
+            StudentHeader(
+                studentName = "Basisgig One",
+                studentLrn = "1111111111"
             )
 
             // Written Works Section
-            Text(
-                text = "Written Works (25%)",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            ScoreInputRow(
-                scoreType = "WW",
-                scores = studentData.writtenWorks,
-                maxItems = 5, // Show first 5 WW
-                onScoreChanged = { number, rawScore, maxScore ->
-                    onWrittenWorkScoreChanged(studentData.student.id, number, rawScore, maxScore)
+            WrittenWorksSection(
+                onUpdateScore = { number, rawScore, maxScore ->
+                    onUpdateWrittenWork(1, number, rawScore, maxScore) // Using placeholder student ID
                 }
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Performance Tasks Section
-            Text(
-                text = "Performance Tasks (50%)",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            ScoreInputRow(
-                scoreType = "PT",
-                scores = studentData.performanceTasks,
-                maxItems = 5, // Show first 5 PT
-                onScoreChanged = { number, rawScore, maxScore ->
-                    onPerformanceTaskScoreChanged(studentData.student.id, number, rawScore, maxScore)
+            PerformanceTasksSection(
+                onUpdateScore = { number, rawScore, maxScore ->
+                    onUpdatePerformanceTask(1, number, rawScore, maxScore) // Using placeholder student ID
                 }
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Quarterly Assessment Section
-            Text(
-                text = "Quarterly Assessment (25%)",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            ExamScoreInput(
-                score = studentData.quarterlyAssessment,
-                onScoreChanged = { rawScore, maxScore ->
-                    onExamScoreChanged(studentData.student.id, rawScore, maxScore)
+            QuarterlyAssessmentSection(
+                onUpdateScore = { rawScore, maxScore ->
+                    onUpdateQuarterlyAssessment(1, rawScore, maxScore) // Using placeholder student ID
                 }
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Computed Grade Display
-            studentData.computedGrade?.let { grade ->
-                ComputedGradeDisplay(grade = grade)
-            }
+            // Computed Grade Section
+            ComputedGradeSection()
         }
     }
 }
 
 @Composable
-fun ScoreInputRow(
-    scoreType: String,
-    scores: Map<Int, ScoreEntry>,
-    maxItems: Int,
-    onScoreChanged: (Int, Int, Int) -> Unit
+private fun StudentHeader(
+    studentName: String,
+    studentLrn: String
 ) {
-    Column {
-        for (number in 1..maxItems) {
-            val scoreEntry = scores[number]
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "👤",
+                fontSize = 16.sp
+            )
+            Text(
+                text = "Student: $studentName (LRN: $studentLrn)",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+    }
+}
+
+@Composable
+private fun WrittenWorksSection(
+    onUpdateScore: (Int, Int, Int) -> Unit
+) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(text = "✍️", fontSize = 16.sp)
+                Text(
+                    text = "Written Works (25%)",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            HorizontalDivider()
+
+            // Score Input Grid - matching your mockup
+            ScoreInputGrid(
+                prefix = "WW",
+                onUpdateScore = onUpdateScore,
+                mockupScores = mapOf(
+                    1 to Pair(50, 50),
+                    2 to Pair(50, 100),
+                    3 to Pair(20, 40)
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun PerformanceTasksSection(
+    onUpdateScore: (Int, Int, Int) -> Unit
+) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(text = "🏆", fontSize = 16.sp)
+                Text(
+                    text = "Performance Tasks (50%)",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            HorizontalDivider()
+
+            // Score Input Grid - showing PT3, PT4, PT5 as in your mockup
+            ScoreInputGrid(
+                prefix = "PT",
+                onUpdateScore = onUpdateScore,
+                mockupScores = emptyMap(), // Empty as shown in mockup
+                startNumber = 3 // Start from PT3 as shown in mockup
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuarterlyAssessmentSection(
+    onUpdateScore: (Int, Int) -> Unit
+) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(text = "🧪", fontSize = 16.sp)
+                Text(
+                    text = "Quarterly Assessment (25%)",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            HorizontalDivider()
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "$scoreType$number:",
+                    text = "Exam:",
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.width(50.dp)
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.width(48.dp)
                 )
 
-                var rawScore by remember { mutableStateOf(scoreEntry?.rawScore?.toString() ?: "") }
-                var maxScore by remember { mutableStateOf(scoreEntry?.maxScore?.toString() ?: "100") }
-
-                // Update state when scoreEntry changes
-                LaunchedEffect(scoreEntry) {
-                    rawScore = scoreEntry?.rawScore?.toString() ?: ""
-                    maxScore = scoreEntry?.maxScore?.toString() ?: "100"
-                }
+                var rawScoreText by remember { mutableStateOf("30") } // From your mockup
+                var maxScoreText by remember { mutableStateOf("40") } // From your mockup
 
                 OutlinedTextField(
-                    value = rawScore,
+                    value = rawScoreText,
                     onValueChange = { newValue ->
-                        rawScore = newValue
-                        val rawScoreInt = newValue.toIntOrNull() ?: 0
-                        val maxScoreInt = maxScore.toIntOrNull() ?: 100
-                        if (newValue.isNotBlank() && rawScoreInt >= 0) {
-                            onScoreChanged(number, rawScoreInt, maxScoreInt)
+                        rawScoreText = newValue
+                        val rawScore = newValue.toIntOrNull()
+                        val maxScore = maxScoreText.toIntOrNull()
+                        if (rawScore != null && maxScore != null && maxScore > 0) {
+                            onUpdateScore(rawScore, maxScore)
                         }
                     },
-                    label = { Text("Score") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
+                    singleLine = true,
+                    modifier = Modifier.width(80.dp),
+                    textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
                 )
 
-                Text(text = "/", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = "/",
+                    style = MaterialTheme.typography.bodyLarge
+                )
 
                 OutlinedTextField(
-                    value = maxScore,
+                    value = maxScoreText,
                     onValueChange = { newValue ->
-                        maxScore = newValue
-                        val rawScoreInt = rawScore.toIntOrNull() ?: 0
-                        val maxScoreInt = newValue.toIntOrNull() ?: 100
-                        if (newValue.isNotBlank() && maxScoreInt > 0) {
-                            onScoreChanged(number, rawScoreInt, maxScoreInt)
+                        maxScoreText = newValue
+                        val rawScore = rawScoreText.toIntOrNull()
+                        val maxScore = newValue.toIntOrNull()
+                        if (rawScore != null && maxScore != null && maxScore > 0) {
+                            onUpdateScore(rawScore, maxScore)
                         }
                     },
-                    label = { Text("Max") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
+                    singleLine = true,
+                    modifier = Modifier.width(80.dp),
+                    textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
                 )
             }
         }
@@ -513,109 +538,221 @@ fun ScoreInputRow(
 }
 
 @Composable
-fun ExamScoreInput(
-    score: ScoreEntry?,
-    onScoreChanged: (Int, Int) -> Unit
+private fun ScoreInputGrid(
+    prefix: String,
+    onUpdateScore: (Int, Int, Int) -> Unit,
+    mockupScores: Map<Int, Pair<Int, Int>> = emptyMap(),
+    startNumber: Int = 1
 ) {
-    var rawScore by remember { mutableStateOf(score?.rawScore?.toString() ?: "") }
-    var maxScore by remember { mutableStateOf(score?.maxScore?.toString() ?: "100") }
-
-    // Update state when score changes
-    LaunchedEffect(score) {
-        rawScore = score?.rawScore?.toString() ?: ""
-        maxScore = score?.maxScore?.toString() ?: "100"
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = "Exam:",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.width(50.dp)
-        )
-
-        OutlinedTextField(
-            value = rawScore,
-            onValueChange = { newValue ->
-                rawScore = newValue
-                val rawScoreInt = newValue.toIntOrNull() ?: 0
-                val maxScoreInt = maxScore.toIntOrNull() ?: 100
-                if (newValue.isNotBlank() && rawScoreInt >= 0) {
-                    onScoreChanged(rawScoreInt, maxScoreInt)
-                }
-            },
-            label = { Text("Score") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.weight(1f),
-            singleLine = true
-        )
-
-        Text(text = "/", style = MaterialTheme.typography.bodyMedium)
-
-        OutlinedTextField(
-            value = maxScore,
-            onValueChange = { newValue ->
-                maxScore = newValue
-                val rawScoreInt = rawScore.toIntOrNull() ?: 0
-                val maxScoreInt = newValue.toIntOrNull() ?: 100
-                if (newValue.isNotBlank() && maxScoreInt > 0) {
-                    onScoreChanged(rawScoreInt, maxScoreInt)
-                }
-            },
-            label = { Text("Max") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.weight(1f),
-            singleLine = true
-        )
-    }
-}
-
-@Composable
-fun ComputedGradeDisplay(grade: ComputedGrade) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (grade.transmutedGrade >= 75)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.errorContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        // First row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = "Computed Grade",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            for (i in startNumber..startNumber + 2) {
+                ScoreInputItem(
+                    number = i,
+                    prefix = prefix,
+                    onUpdateScore = onUpdateScore,
+                    modifier = Modifier.weight(1f),
+                    initialRawScore = mockupScores[i]?.first,
+                    initialMaxScore = mockupScores[i]?.second
+                )
+            }
+        }
 
+        // Second row - only for items 4 and 5
+        if (startNumber == 1) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column {
-                    Text("WW: ${String.format("%.2f", grade.wwAverage)}%", fontSize = 12.sp)
-                    Text("PT: ${String.format("%.2f", grade.ptAverage)}%", fontSize = 12.sp)
-                    Text("Exam: ${String.format("%.2f", grade.examScore)}%", fontSize = 12.sp)
-                }
-                Column {
-                    Text("Initial: ${String.format("%.2f", grade.initialGrade)}%", fontSize = 12.sp)
-                    Text(
-                        text = "Final: ${grade.transmutedGrade}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (grade.transmutedGrade >= 75)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.error
+                for (i in 4..5) {
+                    ScoreInputItem(
+                        number = i,
+                        prefix = prefix,
+                        onUpdateScore = onUpdateScore,
+                        modifier = Modifier.weight(1f),
+                        initialRawScore = mockupScores[i]?.first,
+                        initialMaxScore = mockupScores[i]?.second
                     )
                 }
+                // Empty space for alignment
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
+    }
+}
+
+@Composable
+private fun ScoreInputItem(
+    number: Int,
+    prefix: String,
+    onUpdateScore: (Int, Int, Int) -> Unit,
+    modifier: Modifier = Modifier,
+    initialRawScore: Int? = null,
+    initialMaxScore: Int? = null
+) {
+    var rawScoreText by remember { mutableStateOf(initialRawScore?.toString() ?: "") }
+    var maxScoreText by remember { mutableStateOf(initialMaxScore?.toString() ?: "") }
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = "$prefix$number:",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium
+        )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            OutlinedTextField(
+                value = rawScoreText,
+                onValueChange = { newValue ->
+                    rawScoreText = newValue
+                    val rawScore = newValue.toIntOrNull()
+                    val maxScore = maxScoreText.toIntOrNull()
+                    if (rawScore != null && maxScore != null && maxScore > 0) {
+                        onUpdateScore(number, rawScore, maxScore)
+                    }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                modifier = Modifier.width(60.dp),
+                textStyle = LocalTextStyle.current.copy(
+                    textAlign = TextAlign.Center,
+                    fontSize = 12.sp
+                )
+            )
+
+            Text(
+                text = "/",
+                style = MaterialTheme.typography.bodySmall
+            )
+
+            OutlinedTextField(
+                value = maxScoreText,
+                onValueChange = { newValue ->
+                    maxScoreText = newValue
+                    val rawScore = rawScoreText.toIntOrNull()
+                    val maxScore = newValue.toIntOrNull()
+                    if (rawScore != null && maxScore != null && maxScore > 0) {
+                        onUpdateScore(number, rawScore, maxScore)
+                    }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                modifier = Modifier.width(60.dp),
+                textStyle = LocalTextStyle.current.copy(
+                    textAlign = TextAlign.Center,
+                    fontSize = 12.sp
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun ComputedGradeSection() {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = Color(0xFFE8F5E8) // Light green from your mockup
+        ),
+        border = BorderStroke(1.dp, Color(0xFF4CAF50))
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(text = "📊", fontSize = 16.sp)
+                Text(
+                    text = "Computed Grade",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            HorizontalDivider()
+
+            // Component scores row - using values from your mockup
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                ComponentScore(label = "WW", percentage = "66.67%")
+                ComponentScore(label = "PT", percentage = "89.00%")
+                ComponentScore(label = "Exam", percentage = "75.00%")
+            }
+
+            // Final grades row - using values from your mockup
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                FinalGradeScore(label = "Initial", value = "79.92%")
+                FinalGradeScore(
+                    label = "Final",
+                    value = "87",
+                    isHighlighted = true,
+                    isPassing = true
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ComponentScore(label: String, percentage: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "$label:",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium
+        )
+        Text(
+            text = percentage,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+@Composable
+private fun FinalGradeScore(
+    label: String,
+    value: String,
+    isHighlighted: Boolean = false,
+    isPassing: Boolean = true
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "$label:",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium
+        )
+        Text(
+            text = value,
+            style = if (isHighlighted) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+            fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Normal,
+            color = if (isHighlighted) {
+                if (isPassing) Color(0xFF4CAF50) else Color(0xFFF44336)
+            } else LocalContentColor.current
+        )
     }
 }

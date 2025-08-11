@@ -116,9 +116,9 @@ fun DashboardScreen(
             )
 
             ManagementButton(
-                title = "Score Input",
-                description = "Record student scores and assessments",
-                onClick = { /* TODO: Navigate to score input */ }
+                title = "Score Input Sytem",
+                description = "Record student scores and compute grades",
+                onClick = { navController.navigate("score_input") }
             )
         }
     }

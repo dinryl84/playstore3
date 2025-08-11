@@ -97,8 +97,9 @@ class ScoreInputViewModel @Inject constructor(
     private fun loadSubjectsForSection(sectionId: Int) {
         viewModelScope.launch {
             try {
-                // Using existing repository method
-                val availableSubjects = repository.getSubjectsBySection(sectionId).first()
+                // FIXED: Show ALL subjects instead of only assigned ones
+                // This allows teachers to input scores for any subject-section combination
+                val availableSubjects = repository.getAllSubjects().first()
                 _uiState.update {
                     it.copy(
                         availableSubjectsForSection = availableSubjects,
