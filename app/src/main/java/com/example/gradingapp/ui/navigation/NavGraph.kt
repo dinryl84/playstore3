@@ -8,6 +8,7 @@ import com.example.gradingapp.ui.screens.DashboardScreen
 import com.example.gradingapp.ui.screens.SectionManagementScreen
 import com.example.gradingapp.ui.screens.SubjectManagementScreen
 import com.example.gradingapp.ui.screens.StudentManagementScreen
+import com.example.gradingapp.ui.screens.ScoreInputScreen
 
 @Composable
 fun NavGraph() {
@@ -33,7 +34,12 @@ fun NavGraph() {
             StudentManagementScreen(navController = navController)
         }
 
+        composable("score_input") {
+            ScoreInputScreen(navController = navController)
+        }
+
         // TODO: Add other screen destinations
-        // composable("score_input") { ScoreInputScreen(navController) }
+        // composable("student_summary") { StudentSummaryScreen(navController) }
+        // composable("class_summary") { ClassSummaryScreen(navController) }
     }
 }
